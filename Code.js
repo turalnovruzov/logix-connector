@@ -2,13 +2,20 @@
  * Object containing district data that can be reused throughout the connector.
  */
 const DISTRICTS = {
-  DISTRICT1: {
-    id: 'district1',
-    label: 'District 1'
+  DEMO: {
+    id: 'demo',
+    label: 'Demo',
+    db_number: '0000'
   },
-  DISTRICT2: {
-    id: 'district2',
-    label: 'District 2'
+  BELLWOOD: {
+    id: 'bellwood',
+    label: 'Bellwood',
+    db_number: '0001'
+  },
+  PROVISO: {
+    id: 'proviso',
+    label: 'Proviso',
+    db_number: '0002'
   }
 };
 
@@ -49,16 +56,16 @@ function getConfig(request) {
   
   config.newInfo()
     .setId('instructions')
-    .setText('Select one or more districts to include in your report.');
+    .setText('Select one district to include in your report.');
     
-  const districtsSelect = config.newSelectMultiple()
-    .setId('districts')
-    .setName('Districts')
-    .setHelpText('Select the districts you want to include');
+  const districtSelect = config.newSelectSingle()
+    .setId('district')
+    .setName('District')
+    .setHelpText('Select the district you want to include');
   
   // Add all district options from our reusable list
   getDistrictsList().forEach(function(district) {
-    districtsSelect.addOption(
+    districtSelect.addOption(
       config.newOptionBuilder()
         .setLabel(district.label)
         .setValue(district.id)
@@ -89,9 +96,9 @@ function getSchema(request) {
     .setName('Value')
     .setType(types.NUMBER);
   
-  return cc.newGetSchemaResponse()
-    .setSchema(fields.build())
-    .build();
+  return {
+    schema: fields.build()
+  };
 }
 
 /**
