@@ -228,6 +228,55 @@ function getFields() {
     .setDescription("Description of the location")
     .setType(cc.FieldType.TEXT);
 
+  // New calculated fields
+  fields
+    .newDimension()
+    .setId("function_name")
+    .setName("Function Name")
+    .setDescription("Concatenated function code and description")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('CONCAT($function, " - ", $function_description)');
+
+  fields
+    .newDimension()
+    .setId("fund_name")
+    .setName("Fund Name")
+    .setDescription("Concatenated fund code and description")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('CONCAT($fund, " - ", $fund_description)');
+
+  fields
+    .newDimension()
+    .setId("kind")
+    .setName("Kind")
+    .setDescription("Budget or Actual extracted from Year Kind")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('REGEXP_EXTRACT($year_kind, "(Budget|Actual)$")');
+
+  fields
+    .newDimension()
+    .setId("location_name")
+    .setName("Location Name")
+    .setDescription("Concatenated location code and description")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('CONCAT($location, " - ", $location_description)');
+
+  fields
+    .newDimension()
+    .setId("program_name")
+    .setName("Program Name")
+    .setDescription("Concatenated program code and description")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('CONCAT($program, " - ", $program_description)');
+
+  fields
+    .newDimension()
+    .setId("year")
+    .setName("Year")
+    .setDescription("Fiscal year extracted from Year Kind")
+    .setType(cc.FieldType.TEXT)
+    .setFormula('REGEXP_EXTRACT($year_kind, "^(FY[0-9]{2})")');
+
   return fields;
 }
 
