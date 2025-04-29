@@ -32,6 +32,13 @@ function getAuthType() {
 }
 
 /**
+ * Required function for Looker Studio connectors
+ */
+function isAdminUser() {
+  return false;
+}
+
+/**
  * Returns the user configurable options for the connector.
  * @param {Object} request Config request parameters.
  * @return {Object} Connector configuration to be displayed to the user.
@@ -71,11 +78,19 @@ function getSchema(request) {
   var fields = cc.getFields();
   var types = cc.FieldType;
   
-  // This is an empty schema placeholder
-  // Will be implemented later
+  // Simple schema with district dimension and a single metric
+  fields.newDimension()
+    .setId('district')
+    .setName('District')
+    .setType(types.TEXT);
+    
+  fields.newMetric()
+    .setId('value')
+    .setName('Value')
+    .setType(types.NUMBER);
   
   return cc.newGetSchemaResponse()
-    .setSchema([])
+    .setSchema(fields.build())
     .build();
 }
 
@@ -86,12 +101,48 @@ function getSchema(request) {
  */
 function getData(request) {
   var cc = DataStudioApp.createCommunityConnector();
+  var fields = cc.getFields();
   
-  // This is an empty data placeholder
-  // Will be implemented later
+  // Build schema from request
+  var requestedFieldIds = request.fields.map(function(field) {
+    return field.name;
+  });
+  var requestedFields = fields.forIds(requestedFieldIds);
+  
+  // Sample data - just one row per selected district
+  var rows = [];
+  var selectedDistricts = request.configParams.districts || [];
+  
+  if (!Array.isArray(selectedDistricts)) {
+    selectedDistricts = [selectedDistricts];
+  }
+  
+  // Generate simple data for each selected district
+  selectedDistricts.forEach(function(districtId) {
+    // Get district name
+    var districtName = "";
+    for (var key in DISTRICTS) {
+      if (DISTRICTS[key].id === districtId) {
+        districtName = DISTRICTS[key].label;
+        break;
+      }
+    }
+    
+    // Add simple data
+    rows.push({
+      values: [districtName, 42]
+    });
+  });
+  
+  // If no districts selected, provide fallback data
+  if (rows.length === 0) {
+    rows.push({
+      values: ["Sample District", 42]
+    });
+  }
   
   return cc.newGetDataResponse()
-    .setSchema([])
-    .setRows([])
+    .setSchema(requestedFields)
+    .setRows(rows)
     .build();
 }

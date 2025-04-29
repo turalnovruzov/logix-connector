@@ -1,7 +1,16 @@
 {
   "timeZone": "America/New_York",
-  "dependencies": {
-  },
+  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+  "dataStudio": {
+    "name": "Logix Data Connector",
+    "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/cloud_black_24dp.png",
+    "company": "Your Company Name",
+    "companyUrl": "https://example.com",
+    "addonUrl": "https://example.com",
+    "supportUrl": "https://example.com/support",
+    "description": "A connector for Logix data",
+    "sources": ["CUSTOM"]
+  }
 }
