@@ -291,33 +291,33 @@ function getSchema(request) {
 }
 
 /**
- * Function to fetch data from the API
- * @param {Array} requestedFieldIds Array of field IDs to request
- * @param {String} districtDbNumber District database number to use in API URL
- * @return {Array} Formatted data from API response
+ * Gets the API token from script properties
+ * @return {String|null} API token or null if not found
  */
-function fetchAPIData(requestedFieldIds, districtDbNumber) {
-  // Get API token from project properties
+function getApiToken() {
   const apiToken =
     PropertiesService.getScriptProperties().getProperty("API_TOKEN");
   if (!apiToken) {
     Logger.log("API token not found in script properties");
-    return [];
+    return null;
   }
+  return apiToken;
+}
 
-  // Build dynamic API URL based on district db_number
-  const apiUrl = `https://api01.logixcommerce.com/usa-sch-${districtDbNumber}/db/post/request`;
-
+/**
+ * Creates the API request body for data fetching
+ * @param {Array} requestedFieldIds Array of field IDs to request
+ * @return {Object} Request body for the API
+ */
+function createApiRequestBody(requestedFieldIds) {
   const columns =
     requestedFieldIds.length > 0
       ? requestedFieldIds.map((field) => `[${field}]`).join(", ")
       : "[idn]";
 
-  // Query to fetch all rows from the budget report view
   const query = `Select ${columns} From sch_budget_report_view`;
 
-  // Create the JSON body for the API request
-  const requestBody = {
+  return {
     Method: "GET",
     Query: [
       {
@@ -326,6 +326,22 @@ function fetchAPIData(requestedFieldIds, districtDbNumber) {
       },
     ],
   };
+}
+
+/**
+ * Fetches data from the Logix API
+ * @param {Array} requestedFieldIds Array of field IDs to request
+ * @param {String} districtDbNumber District database number for API URL
+ * @return {Object} Object containing success status and data or error message
+ */
+function fetchFromLogixApi(requestedFieldIds, districtDbNumber) {
+  const apiToken = getApiToken();
+  if (!apiToken) {
+    return { success: false, error: "API token not available" };
+  }
+
+  const apiUrl = `https://api01.logixcommerce.com/usa-sch-${districtDbNumber}/db/post/request`;
+  const requestBody = createApiRequestBody(requestedFieldIds);
 
   try {
     const response = UrlFetchApp.fetch(apiUrl, {
@@ -335,48 +351,82 @@ function fetchAPIData(requestedFieldIds, districtDbNumber) {
         "Content-Type": "application/json",
       },
       payload: JSON.stringify(requestBody),
+      muteHttpExceptions: true,
     });
 
     const jsonData = JSON.parse(response.getContentText());
 
-    // Check if the response is successful and contains data
-    if (
-      jsonData.kind === "Success" &&
-      jsonData.objects &&
-      jsonData.objects.length > 0
-    ) {
-      const dataObjects = jsonData.objects[0]; // Assuming you are interested in the first object
-      const rows = dataObjects.rows;
-
-      // Prepare the data for Looker Studio dynamically based on the fields requested
-      const formattedData = rows.map((row) => {
-        const rowData = [];
-
-        // Iterate over the requested fields and populate the row data accordingly
-        requestedFieldIds.forEach((fieldId) => {
-          if (fieldId in row) {
-            if (fieldId === "amount") {
-              rowData.push(parseFloat(row[fieldId].replace(/[^0-9.-]+/g, ""))); // Convert to float if amount
-            } else {
-              rowData.push(row[fieldId]);
-            }
-          } else {
-            rowData.push(""); // Handle cases where the field might not exist in the data
-          }
-        });
-
-        return rowData;
-      });
-
-      return formattedData;
-    } else {
-      Logger.log("API response does not contain valid data.");
-      return [];
+    if (response.getResponseCode() !== 200) {
+      return {
+        success: false,
+        error: `API returned status code ${response.getResponseCode()}`,
+      };
     }
+
+    if (
+      jsonData.kind !== "Success" ||
+      !jsonData.objects ||
+      jsonData.objects.length === 0
+    ) {
+      return {
+        success: false,
+        error: "API response does not contain valid data",
+      };
+    }
+
+    return {
+      success: true,
+      data: jsonData.objects[0].rows || [],
+    };
   } catch (error) {
-    Logger.log("Error fetching data from API: " + error.message);
-    return [];
+    return {
+      success: false,
+      error: "Error fetching data from API: " + error.message,
+    };
   }
+}
+
+/**
+ * Processes raw API data into the format expected by Looker Studio
+ * @param {Array} rawData Array of data objects from the API
+ * @param {Array} requestedFieldIds Array of field IDs that were requested
+ * @return {Array} Formatted data array for Looker Studio
+ */
+function processApiData(rawData, requestedFieldIds) {
+  return rawData.map((row) => {
+    const values = requestedFieldIds.map((fieldId) => {
+      if (fieldId in row) {
+        if (fieldId === "amount") {
+          // Parse amount field as number, removing non-numeric characters
+          return parseFloat(row[fieldId].replace(/[^0-9.-]+/g, ""));
+        }
+        return row[fieldId];
+      }
+      return "";
+    });
+
+    return { values };
+  });
+}
+
+/**
+ * Retrieves the district DB number based on the district ID
+ * @param {String} selectedDistrictId District ID from config
+ * @return {String} Database number for the district
+ */
+function getDistrictDbNumber(selectedDistrictId) {
+  // Default to demo district
+  let districtDbNumber = DISTRICTS.DEMO.db_number;
+
+  // Find the selected district
+  for (let key in DISTRICTS) {
+    if (DISTRICTS[key].id === selectedDistrictId) {
+      districtDbNumber = DISTRICTS[key].db_number;
+      break;
+    }
+  }
+
+  return districtDbNumber;
 }
 
 /**
@@ -393,34 +443,27 @@ function getData(request) {
   // Performance tracking - start time
   const startTime = new Date();
 
-  // Get selected district from config
-  const selectedDistrictId = request.configParams.district;
-
-  // Find the selected district object
-  let districtDbNumber = DISTRICTS.DEMO.db_number; // Default to demo
-  for (let key in DISTRICTS) {
-    if (DISTRICTS[key].id === selectedDistrictId) {
-      districtDbNumber = DISTRICTS[key].db_number;
-      break;
-    }
-  }
-
-  Logger.log("Using district DB number: " + districtDbNumber);
-
+  // Get requested fields
   const requestedFieldIds = request.fields.map((field) => field.name);
   const requestedFields = getFields().forIds(requestedFieldIds);
 
   Logger.log("Requested Fields: " + JSON.stringify(requestedFieldIds));
   Logger.log(`Number of fields requested: ${requestedFieldIds.length}`);
 
-  // Fetch data from the API with selected district
-  const apiData = fetchAPIData(requestedFieldIds, districtDbNumber);
-  if (!apiData || apiData.length === 0) {
-    Logger.log("No data returned from API.");
+  // Get district DB number
+  const districtDbNumber = getDistrictDbNumber(request.configParams.district);
+  Logger.log("Using district DB number: " + districtDbNumber);
+
+  // Fetch data from the API
+  const apiResponse = fetchFromLogixApi(requestedFieldIds, districtDbNumber);
+
+  // Handle API errors
+  if (!apiResponse.success) {
+    Logger.log(`API error: ${apiResponse.error}`);
 
     // Log performance metrics
-    const executionTime = (new Date() - startTime) / 1000; // Convert to seconds
-    Logger.log(`Execution completed in ${executionTime} seconds with no data`);
+    const executionTime = (new Date() - startTime) / 1000;
+    Logger.log(`Execution completed in ${executionTime} seconds with error`);
 
     return {
       schema: requestedFields.build(),
@@ -428,17 +471,11 @@ function getData(request) {
     };
   }
 
-  // Build the data rows
-  const rows = apiData.map((row) => {
-    const values = requestedFieldIds.map((fieldId, index) => {
-      return row[index] || ""; // Use the correct index
-    });
-
-    return { values };
-  });
+  // Process the API data for Looker Studio
+  const rows = processApiData(apiResponse.data, requestedFieldIds);
 
   // Log performance metrics
-  const executionTime = (new Date() - startTime) / 1000; // Convert to seconds
+  const executionTime = (new Date() - startTime) / 1000;
   Logger.log(`Number of rows returned: ${rows.length}`);
   Logger.log(`Execution completed in ${executionTime} seconds`);
 
