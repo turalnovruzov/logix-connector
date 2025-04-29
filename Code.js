@@ -341,6 +341,9 @@ function getData(request) {
     "getData function called with request: " + JSON.stringify(request)
   );
 
+  // Performance tracking - start time
+  const startTime = new Date();
+
   // Get selected district from config
   const selectedDistrictId = request.configParams.district;
 
@@ -359,11 +362,17 @@ function getData(request) {
   const requestedFields = getFields().forIds(requestedFieldIds);
 
   Logger.log("Requested Fields: " + JSON.stringify(requestedFieldIds));
+  Logger.log(`Number of fields requested: ${requestedFieldIds.length}`);
 
   // Fetch data from the API with selected district
   const apiData = fetchAPIData(requestedFieldIds, districtDbNumber);
   if (!apiData || apiData.length === 0) {
     Logger.log("No data returned from API.");
+
+    // Log performance metrics
+    const executionTime = (new Date() - startTime) / 1000; // Convert to seconds
+    Logger.log(`Execution completed in ${executionTime} seconds with no data`);
+
     return {
       schema: requestedFields.build(),
       rows: [],
@@ -379,7 +388,25 @@ function getData(request) {
     return { values };
   });
 
-  Logger.log("Data to be returned, first row: " + JSON.stringify(rows[0]));
+  // Log performance metrics
+  const executionTime = (new Date() - startTime) / 1000; // Convert to seconds
+  Logger.log(`Number of rows returned: ${rows.length}`);
+  Logger.log(`Execution completed in ${executionTime} seconds`);
+
+  // Only log the first row as sample data to avoid excessive logging
+  if (rows.length > 0) {
+    Logger.log("Sample data (first row):");
+    Logger.log(JSON.stringify(rows[0]));
+  }
+
+  // Log memory usage if available
+  if (typeof Utilities !== "undefined" && Utilities.getScriptTimeRemaining) {
+    Logger.log(
+      `Script time remaining: ${Math.round(
+        Utilities.getScriptTimeRemaining()
+      )} seconds`
+    );
+  }
 
   // Return the response with correctly formatted data
   return {
@@ -401,34 +428,9 @@ function test() {
   };
 
   Logger.log("Starting getData test...");
-  const startTime = new Date();
 
-  // Execute getData
+  // Just call getData - all logging now happens inside getData
   const response = getData(request);
 
-  // Calculate execution time
-  const executionTime = (new Date() - startTime) / 1000; // Convert to seconds
-
-  // Log performance metrics and summary
-  Logger.log(`Execution completed in ${executionTime} seconds`);
-  Logger.log(`Number of fields requested: ${request.fields.length}`);
-
-  if (response && response.rows) {
-    Logger.log(`Number of rows returned: ${response.rows.length}`);
-    Logger.log("Sample data (first row):");
-    if (response.rows.length > 0) {
-      Logger.log(JSON.stringify(response.rows[0]));
-    }
-  } else {
-    Logger.log("No data returned");
-  }
-
-  // Log memory usage if available
-  if (typeof Utilities !== "undefined" && Utilities.getScriptTimeRemaining) {
-    Logger.log(
-      `Script time remaining: ${Math.round(
-        Utilities.getScriptTimeRemaining()
-      )} seconds`
-    );
-  }
+  Logger.log("Test completed");
 }
