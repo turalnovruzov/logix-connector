@@ -1,16 +1,16 @@
 {
-  "timeZone": "America/New_York",
+  "timeZone": "America/Chicago",
   "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "dataStudio": {
-    "name": "Logix Data Connector",
-    "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/cloud_black_24dp.png",
-    "company": "Your Company Name",
-    "companyUrl": "https://example.com",
-    "addonUrl": "https://example.com",
-    "supportUrl": "https://example.com/support",
-    "description": "A connector for Logix data",
-    "sources": ["CUSTOM"]
+    "name": "Logix Connector",
+    "logoUrl": "https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png",
+    "company": "Logix Commerce",
+    "companyUrl": "https://logixcommerce.com/",
+    "addonUrl": "https://logixcommerce.com/",
+    "supportUrl": "https://logixcommerce.com/support",
+    "description": "Connect to Logix Commerce Budget data",
+    "sources": ["LOGIX_COMMERCE"]
   }
 }
