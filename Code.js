@@ -364,15 +364,14 @@ function getData(request) {
   const apiData = fetchAPIData(requestedFieldIds, districtDbNumber);
   if (!apiData || apiData.length === 0) {
     Logger.log("No data returned from API.");
-    return cc
-      .newGetDataResponse()
-      .setFields(requestedFields)
-      .setRows([])
-      .build();
+    return {
+      schema: requestedFields.build(),
+      rows: [],
+    };
   }
 
   // Build the data rows
-  const data = apiData.map((row) => {
+  const rows = apiData.map((row) => {
     const values = requestedFieldIds.map((fieldId, index) => {
       return row[index] || ""; // Use the correct index
     });
@@ -380,14 +379,13 @@ function getData(request) {
     return { values };
   });
 
-  Logger.log("Data to be returned, first row: " + JSON.stringify(data[0]));
+  Logger.log("Data to be returned, first row: " + JSON.stringify(rows[0]));
 
   // Return the response with correctly formatted data
-  return cc
-    .newGetDataResponse()
-    .setFields(requestedFields)
-    .setRows(data)
-    .build();
+  return {
+    schema: requestedFields.build(),
+    rows: rows,
+  };
 }
 
 /**
