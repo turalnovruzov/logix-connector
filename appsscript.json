@@ -19,6 +19,12 @@
     "addonUrl": "https://logixcommerce.com/",
     "supportUrl": "https://logixcommerce.com/support",
     "description": "Connect to Logix Commerce Budget data",
-    "sources": ["LOGIX_COMMERCE"]
+    "sources": [
+      "LOGIX_COMMERCE"
+    ]
+  },
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
   }
 }
