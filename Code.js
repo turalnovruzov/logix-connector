@@ -79,7 +79,42 @@ function getData(request) {
   const districtDbNumber = getDistrictDbNumber(request.configParams.district);
   Logger.log("Using district DB number: " + districtDbNumber);
 
-  // Fetch data from the API
+  // Generate a cache key based on district and requested fields
+  const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
+  const cacheUrl = buildFirebaseUrl(cacheKey);
+
+  // Try to get data from cache first
+  let cachedData = getFromCache(cacheUrl);
+  let cacheNeedsUpdate = true;
+
+  if (cachedData) {
+    Logger.log("Found data in cache with key: " + cacheKey);
+
+    // Check if cache is still valid (not expired)
+    if (!isCacheExpired(cachedData.timestamp)) {
+      Logger.log("Cache is still valid, using cached data");
+      cacheNeedsUpdate = false;
+
+      // Log performance metrics with cache hit
+      logPerformance(
+        startTime,
+        cachedData.data,
+        "Cache hit: Using cached data"
+      );
+
+      // Return the cached data
+      return {
+        schema: requestedFields.build(),
+        rows: processApiData(cachedData.data, requestedFieldIds),
+      };
+    } else {
+      Logger.log("Cache is expired, will fetch fresh data");
+    }
+  } else {
+    Logger.log("No cached data found, will fetch fresh data");
+  }
+
+  // If we reach here, we need to fetch fresh data
   const apiResponse = fetchFromLogixApi(requestedFieldIds, districtDbNumber);
 
   // Handle API errors
@@ -102,8 +137,32 @@ function getData(request) {
   // Process the API data for Looker Studio
   const rows = processApiData(apiResponse.data, requestedFieldIds);
 
+  // Store the data in cache for future use
+  const cacheData = {
+    data: apiResponse.data,
+    timestamp: new Date().getTime(),
+  };
+
+  // Update cache with fresh data
+  if (cacheNeedsUpdate) {
+    // Delete existing cache entry if it exists
+    if (cachedData) {
+      deleteFromCache(cacheUrl);
+    }
+
+    // Store new data in cache
+    putInCache(cacheUrl, cacheData);
+    Logger.log("Stored fresh data in cache with key: " + cacheKey);
+  }
+
   // Log performance metrics
-  logPerformance(startTime, rows);
+  logPerformance(
+    startTime,
+    rows,
+    cacheNeedsUpdate
+      ? "Cache miss: Fetched and cached fresh data"
+      : "Used cached data"
+  );
 
   // Return the response with correctly formatted data
   return {

@@ -176,7 +176,7 @@ function getFields() {
     .setName("Kind")
     .setDescription("Budget or Actual extracted from Year Kind")
     .setType(cc.FieldType.TEXT)
-    .setFormula('REGEXP_EXTRACT($year_kind, "(Budget|Actual)$")');
+    .setFormula('REGEXP_EXTRACT($year_kind, "(Budget|Actual)")');
 
   fields
     .newDimension()

@@ -37,10 +37,10 @@ function createApiRequestBody(requestedFieldIds) {
 }
 
 /**
- * Fetches data from the Logix API
- * @param {Array} requestedFieldIds Array of field IDs to request
- * @param {String} districtDbNumber District database number for API URL
- * @return {Object} Object containing success status and data or error message
+ * Fetches data from the Logix API.
+ * @param {Array} requestedFieldIds Array of field IDs that were requested
+ * @param {String} districtDbNumber District database number
+ * @return {Object} Object with success flag and data or error
  */
 function fetchFromLogixApi(requestedFieldIds, districtDbNumber) {
   const apiToken = getApiToken();
