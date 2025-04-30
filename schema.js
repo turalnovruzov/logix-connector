@@ -172,7 +172,7 @@ function getFields() {
 
   fields
     .newDimension()
-    .setId("kind")
+    .setId("kind_") // kind doesn't work for some reason, so we're using kind_
     .setName("Kind")
     .setDescription("Budget or Actual extracted from Year Kind")
     .setType(cc.FieldType.TEXT)
