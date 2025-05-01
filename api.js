@@ -23,7 +23,7 @@ function createApiRequestBody(requestedFieldIds) {
       ? requestedFieldIds.map((field) => `[${field}]`).join(", ")
       : "[idn]";
 
-  const query = `Select ${columns} From sch_budget_report_view`;
+  const query = `Select ${columns} From sch_budget_report_view_new`;
 
   return {
     Method: "GET",

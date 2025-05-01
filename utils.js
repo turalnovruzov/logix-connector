@@ -8,10 +8,6 @@ function processApiData(rawData, requestedFieldIds) {
   return rawData.map((row) => {
     const values = requestedFieldIds.map((fieldId) => {
       if (fieldId in row) {
-        if (fieldId === "amount") {
-          // Parse amount field as number, removing non-numeric characters
-          return parseFloat(row[fieldId].replace(/[^0-9.-]+/g, ""));
-        }
         return row[fieldId];
       }
       return "";
