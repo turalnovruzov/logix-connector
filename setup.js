@@ -80,10 +80,35 @@ function testFirebaseConnection() {
  */
 function clearAllCachedData() {
   try {
-    // Delete the entire cache collection
-    const url = buildFirebaseUrl("");
-    deleteFromCache(url);
-    Logger.log("All cached data cleared successfully");
+    // Get the root URL to fetch all cache entries
+    const rootUrl = buildFirebaseUrl("");
+
+    // First, get all the data to identify keys
+    const cacheData = getFromCache(rootUrl);
+
+    if (!cacheData) {
+      Logger.log("No cached data found to clear");
+      return true;
+    }
+
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    // Delete each key individually
+    for (const key in cacheData) {
+      try {
+        const keyUrl = buildFirebaseUrl(key);
+        deleteFromCache(keyUrl);
+        deletedCount++;
+      } catch (err) {
+        Logger.log(`Failed to delete key ${key}: ${err}`);
+        failedCount++;
+      }
+    }
+
+    Logger.log(
+      `Cache clearing completed. Deleted: ${deletedCount}, Failed: ${failedCount}`
+    );
     return true;
   } catch (error) {
     Logger.log("Error clearing cached data: " + error);
