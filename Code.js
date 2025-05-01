@@ -51,7 +51,20 @@ function getConfig(request) {
  */
 function getSchema(request) {
   var cc = DataStudioApp.createCommunityConnector();
-  return cc.newGetSchemaResponse().setFields(getFields()).build();
+
+  // Get district DB number from config params
+  const districtDbNumber =
+    request.configParams && request.configParams.district
+      ? getDistrictDbNumber(request.configParams.district)
+      : null;
+
+  Logger.log("Getting schema for district DB number: " + districtDbNumber);
+
+  // Pass district DB number to getFields
+  return cc
+    .newGetSchemaResponse()
+    .setFields(getFields(districtDbNumber))
+    .build();
 }
 
 /**
@@ -68,16 +81,16 @@ function getData(request) {
   // Performance tracking - start time
   const startTime = new Date();
 
-  // Get requested fields
-  const requestedFieldIds = request.fields.map((field) => field.name);
-  const requestedFields = getFields().forIds(requestedFieldIds);
-
-  Logger.log("Requested Fields: " + JSON.stringify(requestedFieldIds));
-  Logger.log(`Number of fields requested: ${requestedFieldIds.length}`);
-
   // Get district DB number
   const districtDbNumber = getDistrictDbNumber(request.configParams.district);
   Logger.log("Using district DB number: " + districtDbNumber);
+
+  // Get requested fields
+  const requestedFieldIds = request.fields.map((field) => field.name);
+  const requestedFields = getFields(districtDbNumber).forIds(requestedFieldIds);
+
+  Logger.log("Requested Fields: " + JSON.stringify(requestedFieldIds));
+  Logger.log(`Number of fields requested: ${requestedFieldIds.length}`);
 
   // Generate a cache key based on district and requested fields
   const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);

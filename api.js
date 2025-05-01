@@ -93,3 +93,61 @@ function fetchFromLogixApi(requestedFieldIds, districtDbNumber) {
     };
   }
 }
+
+/**
+ * Fetches element types from the Logix API.
+ * @param {String} districtDbNumber District database number
+ * @return {Array} Array of element type names or empty array on error
+ */
+function fetchElementTypes(districtDbNumber) {
+  const apiToken = getApiToken();
+  if (!apiToken) {
+    Logger.log("API token not available for fetching element types");
+    return [];
+  }
+
+  const apiUrl = `https://api01.logixcommerce.com/usa-sch-${districtDbNumber}/db/post/request`;
+  const requestBody = {
+    Method: "GET",
+    Query: [
+      {
+        Type: "server",
+        Obj_query: "Select name From dbo.sch_element_types",
+      },
+    ],
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(apiUrl, {
+      method: "post",
+      headers: {
+        Authorization: apiToken,
+        "Content-Type": "application/json",
+      },
+      payload: JSON.stringify(requestBody),
+      muteHttpExceptions: true,
+    });
+
+    const jsonData = JSON.parse(response.getContentText());
+
+    if (response.getResponseCode() !== 200 || jsonData.kind !== "Success") {
+      Logger.log("API error when fetching element types");
+      return [];
+    }
+
+    if (
+      !jsonData.objects ||
+      jsonData.objects.length === 0 ||
+      !jsonData.objects[0].rows
+    ) {
+      Logger.log("No element types found in API response");
+      return [];
+    }
+
+    // Extract just the names from the response
+    return jsonData.objects[0].rows.map((row) => row.name);
+  } catch (error) {
+    Logger.log("Error fetching element types: " + error.message);
+    return [];
+  }
+}

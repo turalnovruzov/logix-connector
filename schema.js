@@ -1,11 +1,13 @@
 /**
  * Function to create fields for Looker Studio
+ * @param {String} districtDbNumber District database number for fetching dynamic schema
  * @return {Object} Fields object with all available fields
  */
-function getFields() {
+function getFields(districtDbNumber) {
   var cc = DataStudioApp.createCommunityConnector();
   const fields = cc.getFields();
 
+  // Add static fields
   fields
     .newDimension()
     .setId("idn")
@@ -55,121 +57,80 @@ function getFields() {
     .setDescription("Amount value")
     .setType(cc.FieldType.NUMBER);
 
-  fields
-    .newDimension()
-    .setId("fund")
-    .setName("Fund")
-    .setDescription("Fund code")
-    .setType(cc.FieldType.TEXT);
+  // Add dynamic fields based on element types
+  // If districtDbNumber is provided, fetch element types from API
+  if (districtDbNumber) {
+    const elementTypes = fetchElementTypes(districtDbNumber);
+    Logger.log("Fetched element types: " + JSON.stringify(elementTypes));
 
-  fields
-    .newDimension()
-    .setId("type")
-    .setName("Type")
-    .setDescription("Type of the transaction")
-    .setType(cc.FieldType.TEXT);
+    // Create a dimension for each element type
+    elementTypes.forEach(function (elementType) {
+      // Convert to lowercase and add _name suffix
+      const fieldId = elementType.toLowerCase() + "_name";
+      const fieldName =
+        elementType.charAt(0) + elementType.slice(1).toLowerCase() + " Name";
 
-  fields
-    .newDimension()
-    .setId("function")
-    .setName("Function")
-    .setDescription("Function code")
-    .setType(cc.FieldType.TEXT);
+      fields
+        .newDimension()
+        .setId(fieldId)
+        .setName(fieldName)
+        .setDescription(fieldName)
+        .setType(cc.FieldType.TEXT);
+    });
+  } else {
+    // Fallback to hardcoded fields if no district is provided
+    // For backward compatibility
+    fields
+      .newDimension()
+      .setId("fund_name")
+      .setName("Fund Name")
+      .setDescription("Fund Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("object")
-    .setName("Object")
-    .setDescription("Object code")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("type_name")
+      .setName("Type Name")
+      .setDescription("Type Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("program")
-    .setName("Program")
-    .setDescription("Program code")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("function_name")
+      .setName("Function Name")
+      .setDescription("Function Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("source")
-    .setName("Source")
-    .setDescription("Source code")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("object_name")
+      .setName("Object Name")
+      .setDescription("Object Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("location")
-    .setName("Location")
-    .setDescription("Location code")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("program_name")
+      .setName("Program Name")
+      .setDescription("Program Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("fund_description")
-    .setName("Fund Description")
-    .setDescription("Description of the fund")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("source_name")
+      .setName("Source Name")
+      .setDescription("Source Name")
+      .setType(cc.FieldType.TEXT);
 
-  fields
-    .newDimension()
-    .setId("type_description")
-    .setName("Type Description")
-    .setDescription("Description of the type")
-    .setType(cc.FieldType.TEXT);
-
-  fields
-    .newDimension()
-    .setId("function_description")
-    .setName("Function Description")
-    .setDescription("Description of the function")
-    .setType(cc.FieldType.TEXT);
-
-  fields
-    .newDimension()
-    .setId("object_description")
-    .setName("Object Description")
-    .setDescription("Description of the object")
-    .setType(cc.FieldType.TEXT);
-
-  fields
-    .newDimension()
-    .setId("program_description")
-    .setName("Program Description")
-    .setDescription("Description of the program")
-    .setType(cc.FieldType.TEXT);
-
-  fields
-    .newDimension()
-    .setId("source_description")
-    .setName("Source Description")
-    .setDescription("Description of the source")
-    .setType(cc.FieldType.TEXT);
-
-  fields
-    .newDimension()
-    .setId("location_description")
-    .setName("Location Description")
-    .setDescription("Description of the location")
-    .setType(cc.FieldType.TEXT);
+    fields
+      .newDimension()
+      .setId("location_name")
+      .setName("Location Name")
+      .setDescription("Location Name")
+      .setType(cc.FieldType.TEXT);
+  }
 
   // New calculated fields
-  fields
-    .newDimension()
-    .setId("function_name")
-    .setName("Function Name")
-    .setDescription("Concatenated function code and description")
-    .setType(cc.FieldType.TEXT)
-    .setFormula('CONCAT($function, " - ", $function_description)');
-
-  fields
-    .newDimension()
-    .setId("fund_name")
-    .setName("Fund Name")
-    .setDescription("Concatenated fund code and description")
-    .setType(cc.FieldType.TEXT)
-    .setFormula('CONCAT($fund, " - ", $fund_description)');
-
   fields
     .newDimension()
     .setId("kind_")
@@ -177,22 +138,6 @@ function getFields() {
     .setDescription("Budget or Actual extracted from Year Kind")
     .setType(cc.FieldType.TEXT)
     .setFormula('REGEXP_EXTRACT($year_kind, "(Budget|Actual)")');
-
-  fields
-    .newDimension()
-    .setId("location_name")
-    .setName("Location Name")
-    .setDescription("Concatenated location code and description")
-    .setType(cc.FieldType.TEXT)
-    .setFormula('CONCAT($location, " - ", $location_description)');
-
-  fields
-    .newDimension()
-    .setId("program_name")
-    .setName("Program Name")
-    .setDescription("Concatenated program code and description")
-    .setType(cc.FieldType.TEXT)
-    .setFormula('CONCAT($program, " - ", $program_description)');
 
   fields
     .newDimension()
