@@ -115,3 +115,21 @@ function clearAllCachedData() {
     return false;
   }
 }
+
+/**
+ * Function to manually run the cache refresh operation
+ * Useful for testing without waiting for the trigger
+ */
+function manuallyRefreshAllCaches() {
+  try {
+    const results = refreshAllCaches();
+    Logger.log(`Manual cache refresh completed: ${JSON.stringify(results)}`);
+    return results;
+  } catch (error) {
+    Logger.log("Error during manual cache refresh: " + error);
+    return {
+      success: false,
+      error: error.toString(),
+    };
+  }
+}

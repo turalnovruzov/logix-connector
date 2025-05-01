@@ -9,6 +9,22 @@ A custom Looker Studio connector that fetches data from Logix API with Firebase 
 - Caches API responses in Firebase Realtime Database for 1 hour
 - Improved performance by reducing API calls
 
+## Cache Refresh Functionality
+
+The connector includes an automatic cache refresh system to ensure users always get fast responses:
+
+### How It Works
+
+1. The system periodically refreshes all cached data in Firebase to ensure it's always up-to-date
+2. This prevents users from having to wait for API calls when the cache expires
+3. The default caching interval is 1 hour, but the refresh runs every 30 minutes to ensure no cache expires
+
+### Managing the Cache Refresh
+
+- To manually refresh all caches: Run `manuallyRefreshAllCaches()`
+
+**Note:** Make sure your script has proper permissions and that Firebase service account credentials are correctly set up before using these functions.
+
 ## Configuration
 
 ### Firebase Setup
