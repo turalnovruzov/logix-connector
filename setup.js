@@ -38,6 +38,71 @@ function storeServiceAccountCredentials(credentialsJson) {
 }
 
 /**
+ * Function to enable Firebase caching
+ * Run this to turn on caching functionality
+ * @return {Object} Status message
+ */
+function enableCaching() {
+  try {
+    setCachingEnabled(true);
+    return {
+      success: true,
+      message: "Caching has been enabled",
+      cachingEnabled: true,
+    };
+  } catch (error) {
+    Logger.log("Error enabling caching: " + error);
+    return {
+      success: false,
+      error: error.toString(),
+    };
+  }
+}
+
+/**
+ * Function to disable Firebase caching
+ * Run this to turn off caching functionality
+ * @return {Object} Status message
+ */
+function disableCaching() {
+  try {
+    setCachingEnabled(false);
+    return {
+      success: true,
+      message: "Caching has been disabled",
+      cachingEnabled: false,
+    };
+  } catch (error) {
+    Logger.log("Error disabling caching: " + error);
+    return {
+      success: false,
+      error: error.toString(),
+    };
+  }
+}
+
+/**
+ * Function to check current caching status
+ * @return {Object} Caching status
+ */
+function getCachingStatus() {
+  try {
+    const enabled = isCachingEnabled();
+    return {
+      success: true,
+      cachingEnabled: enabled,
+      message: `Caching is currently ${enabled ? "enabled" : "disabled"}`,
+    };
+  } catch (error) {
+    Logger.log("Error checking caching status: " + error);
+    return {
+      success: false,
+      error: error.toString(),
+    };
+  }
+}
+
+/**
  * Function to test Firebase connection
  * Run this after setting up the service account to verify it works
  */

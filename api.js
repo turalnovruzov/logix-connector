@@ -161,6 +161,17 @@ function refreshAllCaches() {
   const startTime = new Date();
   Logger.log("Starting cache refresh operation");
 
+  // First check if caching is enabled
+  if (!isCachingEnabled()) {
+    Logger.log("Cache refresh skipped - caching is disabled");
+    return {
+      success: true,
+      refreshed: 0,
+      failed: 0,
+      message: "Caching is disabled",
+    };
+  }
+
   // Get all cached data from Firebase
   const rootUrl = buildFirebaseUrl("");
   const cacheData = getFromCache(rootUrl);

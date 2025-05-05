@@ -92,39 +92,49 @@ function getData(request) {
   Logger.log("Requested Fields: " + JSON.stringify(requestedFieldIds));
   Logger.log(`Number of fields requested: ${requestedFieldIds.length}`);
 
-  // Generate a cache key based on district and requested fields
-  const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
-  const cacheUrl = buildFirebaseUrl(cacheKey);
+  // Check if caching is enabled
+  const cachingEnabled = isCachingEnabled();
+  Logger.log(`Caching is ${cachingEnabled ? "enabled" : "disabled"}`);
 
-  // Try to get data from cache first
-  let cachedData = getFromCache(cacheUrl);
-  let cacheNeedsUpdate = true;
+  let rows = [];
+  let message = "";
 
-  if (cachedData) {
-    Logger.log("Found data in cache with key: " + cacheKey);
+  // If caching is enabled, try to get data from cache
+  if (cachingEnabled) {
+    // Generate a cache key based on district and requested fields
+    const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
+    const cacheUrl = buildFirebaseUrl(cacheKey);
 
-    // Check if cache is still valid (not expired)
-    if (!isCacheExpired(cachedData.timestamp)) {
-      Logger.log("Cache is still valid, using cached data");
-      cacheNeedsUpdate = false;
+    // Try to get data from cache first
+    let cachedData = getFromCache(cacheUrl);
+    let cacheNeedsUpdate = true;
 
-      // Log performance metrics with cache hit
-      logPerformance(
-        startTime,
-        cachedData.data,
-        "Cache hit: Using cached data"
-      );
+    if (cachedData) {
+      Logger.log("Found data in cache with key: " + cacheKey);
 
-      // Return the cached data
-      return {
-        schema: requestedFields.build(),
-        rows: processApiData(cachedData.data, requestedFieldIds),
-      };
+      // Check if cache is still valid (not expired)
+      if (!isCacheExpired(cachedData.timestamp)) {
+        Logger.log("Cache is still valid, using cached data");
+        cacheNeedsUpdate = false;
+
+        // Log performance metrics with cache hit
+        logPerformance(
+          startTime,
+          cachedData.data,
+          "Cache hit: Using cached data"
+        );
+
+        // Return the cached data
+        return {
+          schema: requestedFields.build(),
+          rows: processApiData(cachedData.data, requestedFieldIds),
+        };
+      } else {
+        Logger.log("Cache is expired, will fetch fresh data");
+      }
     } else {
-      Logger.log("Cache is expired, will fetch fresh data");
+      Logger.log("No cached data found, will fetch fresh data");
     }
-  } else {
-    Logger.log("No cached data found, will fetch fresh data");
   }
 
   // If we reach here, we need to fetch fresh data
@@ -148,34 +158,28 @@ function getData(request) {
   }
 
   // Process the API data for Looker Studio
-  const rows = processApiData(apiResponse.data, requestedFieldIds);
+  rows = processApiData(apiResponse.data, requestedFieldIds);
+  message = "Fetched fresh data from API";
 
-  // Store the data in cache for future use
-  const cacheData = {
-    data: apiResponse.data,
-    timestamp: new Date().getTime(),
-  };
+  // Store the data in cache if caching is enabled
+  if (cachingEnabled) {
+    // Generate a cache key based on district and requested fields
+    const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
+    const cacheUrl = buildFirebaseUrl(cacheKey);
 
-  // Update cache with fresh data
-  if (cacheNeedsUpdate) {
-    // Delete existing cache entry if it exists
-    if (cachedData) {
-      deleteFromCache(cacheUrl);
-    }
+    const cacheData = {
+      data: apiResponse.data,
+      timestamp: new Date().getTime(),
+    };
 
-    // Store new data in cache
+    // Update cache with fresh data
     putInCache(cacheUrl, cacheData);
     Logger.log("Stored fresh data in cache with key: " + cacheKey);
+    message += " and updated cache";
   }
 
   // Log performance metrics
-  logPerformance(
-    startTime,
-    rows,
-    cacheNeedsUpdate
-      ? "Cache miss: Fetched and cached fresh data"
-      : "Used cached data"
-  );
+  logPerformance(startTime, rows, message);
 
   // Return the response with correctly formatted data
   return {
@@ -186,8 +190,26 @@ function getData(request) {
 
 /**
  * Function to test the connector's getData functionality
+ * @param {boolean} withCaching Optional parameter to enable/disable caching during test
  */
-function test() {
+function test(withCaching) {
+  // Save current caching state to restore later
+  const originalCachingState = isCachingEnabled();
+
+  // If withCaching parameter is provided, set caching accordingly for this test
+  if (withCaching !== undefined) {
+    setCachingEnabled(withCaching);
+    Logger.log(
+      `Test running with caching ${withCaching ? "enabled" : "disabled"}`
+    );
+  } else {
+    Logger.log(
+      `Test running with current caching setting: ${
+        originalCachingState ? "enabled" : "disabled"
+      }`
+    );
+  }
+
   // Mock request object similar to what Looker Studio would send
   const request = {
     configParams: {
@@ -198,8 +220,21 @@ function test() {
 
   Logger.log("Starting getData test...");
 
-  // Just call getData - all logging now happens inside getData
-  const response = getData(request);
-
-  Logger.log("Test completed");
+  try {
+    // Call getData - all logging now happens inside getData
+    const response = getData(request);
+    Logger.log(`Test completed with ${response.rows.length} rows returned`);
+  } catch (error) {
+    Logger.log(`Test failed with error: ${error}`);
+  } finally {
+    // Restore original caching state if it was changed
+    if (withCaching !== undefined && withCaching !== originalCachingState) {
+      setCachingEnabled(originalCachingState);
+      Logger.log(
+        `Restored original caching state: ${
+          originalCachingState ? "enabled" : "disabled"
+        }`
+      );
+    }
+  }
 }

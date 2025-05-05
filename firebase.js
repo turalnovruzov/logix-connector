@@ -9,8 +9,29 @@ var SERVICE_ACCOUNT_CREDS = "SERVICE_ACCOUNT_CREDS";
 var SERVICE_ACCOUNT_KEY = "private_key";
 var SERVICE_ACCOUNT_EMAIL = "client_email";
 var BILLING_PROJECT_ID = "project_id";
+var CACHING_ENABLED = "CACHING_ENABLED"; // Flag to control caching
 
 var scriptProperties = PropertiesService.getScriptProperties();
+
+/**
+ * Checks if caching is enabled
+ * @returns {boolean} True if caching is enabled
+ */
+function isCachingEnabled() {
+  var cachingEnabled = scriptProperties.getProperty(CACHING_ENABLED);
+  // Default to disabled if not set
+  return cachingEnabled === "true";
+}
+
+/**
+ * Sets the caching enabled/disabled state
+ * @param {boolean} enabled Whether caching should be enabled
+ */
+function setCachingEnabled(enabled) {
+  scriptProperties.setProperty(CACHING_ENABLED, enabled.toString());
+  Logger.log("Caching " + (enabled ? "enabled" : "disabled"));
+  return enabled;
+}
 
 /**
  * Returns the URL for a file in a firebase database.
@@ -108,6 +129,11 @@ function firebaseCache(method, url, data) {
  * @returns {Object|null} Cached data or null if not found
  */
 function getFromCache(url) {
+  // Skip if caching is disabled
+  if (!isCachingEnabled()) {
+    Logger.log("Cache read skipped - caching disabled");
+    return null;
+  }
   return firebaseCache("get", url);
 }
 
@@ -116,6 +142,11 @@ function getFromCache(url) {
  * @param {string} url Firebase URL
  */
 function deleteFromCache(url) {
+  // Skip if caching is disabled
+  if (!isCachingEnabled()) {
+    Logger.log("Cache delete skipped - caching disabled");
+    return;
+  }
   return firebaseCache("delete", url);
 }
 
@@ -125,6 +156,11 @@ function deleteFromCache(url) {
  * @param {Object} data Data to cache
  */
 function putInCache(url, data) {
+  // Skip if caching is disabled
+  if (!isCachingEnabled()) {
+    Logger.log("Cache write skipped - caching disabled");
+    return;
+  }
   return firebaseCache("put", url, data);
 }
 
