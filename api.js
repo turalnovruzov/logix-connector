@@ -173,8 +173,7 @@ function refreshAllCaches() {
   }
 
   // Get all cached data from the current provider
-  const rootKey = "";
-  const cacheData = getFromCache(rootKey);
+  const cacheData = getAllCacheKeys();
 
   if (!cacheData) {
     Logger.log("No cached data found to refresh");

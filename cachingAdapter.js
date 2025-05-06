@@ -74,6 +74,20 @@ function getFromCache(key) {
 }
 
 /**
+ * Gets all cache keys and their values from the current provider
+ * @returns {Object|null} Object with keys as properties or null if error/disabled
+ */
+function getAllCacheKeys() {
+  // Skip if caching is disabled
+  if (!isCachingEnabled()) {
+    Logger.log("Cache keys fetch skipped - caching disabled");
+    return null;
+  }
+
+  return getCacheProvider().getKeys();
+}
+
+/**
  * Puts data in cache using the configured provider
  * @param {string} key Cache key
  * @param {Object} data Data to cache

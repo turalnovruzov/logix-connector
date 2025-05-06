@@ -264,11 +264,8 @@ function configureProxyUrl() {
  */
 function clearAllCachedData() {
   try {
-    // Get the root URL to fetch all cache entries
-    const rootKey = "";
-
-    // First, get all the data to identify keys
-    const cacheData = getFromCache(rootKey);
+    // Get all cache keys from the current provider
+    const cacheData = getAllCacheKeys();
 
     if (!cacheData) {
       Logger.log("No cached data found to clear");

@@ -133,6 +133,16 @@ const firebaseCache = {
   },
 
   /**
+   * Gets all cache keys from Firebase
+   * @returns {Object|null} Object with keys as properties or null if error
+   */
+  getKeys: function () {
+    Logger.log("[Firebase] Fetching all cache keys");
+    // For Firebase, getting all keys is the same as getting with an empty key
+    return this.get("");
+  },
+
+  /**
    * Puts data in Firebase cache
    * @param {string} key Cache key
    * @param {Object} data Data to cache

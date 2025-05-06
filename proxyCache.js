@@ -64,6 +64,50 @@ const proxyCache = {
   },
 
   /**
+   * Gets all cache keys from the proxy
+   * @returns {Object|null} Object with keys as properties or null if error
+   */
+  getKeys: function () {
+    try {
+      Logger.log("[Proxy] Fetching all cache keys");
+      const baseUrl = getValidProxyBaseUrl();
+      const url = `${baseUrl}/api/cache/keys`;
+
+      const response = UrlFetchApp.fetch(url, {
+        method: "get",
+        muteHttpExceptions: true,
+      });
+
+      if (response.getResponseCode() !== 200) {
+        Logger.log(
+          `[Proxy] API error when fetching keys: ${response.getResponseCode()} - ${response.getContentText()}`
+        );
+        return null;
+      }
+
+      // Parse keys from the response
+      const keys = JSON.parse(response.getContentText());
+
+      // Convert array of keys to object like Firebase returns
+      // This helps maintain compatibility with existing code
+      const keysObject = {};
+
+      // Fetch the actual data for each key
+      for (const key of keys) {
+        const data = this.get(key);
+        if (data) {
+          keysObject[key] = data;
+        }
+      }
+
+      return keysObject;
+    } catch (error) {
+      Logger.log(`[Proxy] Error fetching all keys: ${error}`);
+      return null;
+    }
+  },
+
+  /**
    * Puts data in proxy cache
    * @param {string} key Cache key
    * @param {Object} data Data to cache
