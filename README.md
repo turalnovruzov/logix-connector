@@ -1,73 +1,91 @@
 # Logix Connector for Looker Studio
 
-A custom Looker Studio connector that fetches data from Logix API with Firebase Realtime Database caching.
+A Google Apps Script connector for Logix Commerce data in Looker Studio.
 
-## Features
+## Project Structure
 
-- Connect to Logix Commerce Budget data
-- Select different districts
-- Caches API responses in Firebase Realtime Database for 1 hour
-- Improved performance by reducing API calls
+- `Code.js` - Main connector implementation with Looker Studio required functions
+- `api.js` - API communication with Logix Commerce
+- `constants.js` - Constants and district configurations
+- `schema.js` - Field definitions for the connector
+- `utils.js` - Utility functions for data processing
 
-## Cache Refresh Functionality
+## Caching Architecture
 
-The connector includes an automatic cache refresh system to ensure users always get fast responses:
+This connector implements a pluggable caching adapter that supports multiple cache backends:
 
-### How It Works
+### Cache Providers
 
-1. The system periodically refreshes all cached data in Firebase to ensure it's always up-to-date
-2. This prevents users from having to wait for API calls when the cache expires
-3. The default caching interval is 1 hour, but the refresh runs every 30 minutes to ensure no cache expires
-
-### Managing the Cache Refresh
-
-- To manually refresh all caches: Run `manuallyRefreshAllCaches()`
-
-**Note:** Make sure your script has proper permissions and that Firebase service account credentials are correctly set up before using these functions.
-
-## Configuration
-
-### Firebase Setup
-
-1. Create a Firebase Realtime Database in your Google Cloud Project
-2. Create a service account with Firebase Admin role
-3. Download the service account JSON credentials file
-4. Deploy the code to Google Apps Script
-5. Run the `storeServiceAccountCredentials` function with the JSON content from the service account file
-
-```javascript
-// Example: Run this in the Apps Script editor
-storeServiceAccountCredentials('{"type":"service_account","project_id":"your-project-id","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"...","client_id":"...","auth_uri":"...","token_uri":"...","auth_provider_x509_cert_url":"...","client_x509_cert_url":"..."}');
-```
-
-6. Test the Firebase connection by running the `testFirebaseConnection` function
-
-### Cache Configuration
-
-The default cache expiration is set to 1 hour. You can modify this by changing the `CACHE_EXPIRATION_HOURS` variable in `firebase.js`.
-
-## Development
-
-This project uses Google Apps Script for development with local JavaScript files that are converted to `.gs` files when deployed to Google Cloud.
+1. **Firebase** - Default provider, uses Firebase Realtime Database
+2. **Proxy** - Uses a custom HTTP proxy API for caching
 
 ### Files
 
-- `Code.js` - Main connector code
-- `constants.js` - Constants for districts and configuration
-- `schema.js` - Field definitions and schema
-- `utils.js` - Utility functions for data processing
-- `api.js` - Functions for fetching data from API
-- `firebase.js` - Firebase caching implementation
-- `setup.js` - Setup utilities for Firebase configuration
+- `cachingAdapter.js` - Core adapter that delegates to the configured provider
+- `config.js` - Configuration for cache providers
+- `firebaseCache.js` - Firebase Realtime Database provider implementation
+- `proxyCache.js` - Custom proxy API provider implementation
+- `firebase.js` - Legacy file maintained for backwards compatibility
 
-### Deploying Changes
+### Usage
 
-Use the `clasp` CLI tool to push changes to Google Cloud:
+```javascript
+// Get data from cache
+const data = getFromCache(cacheKey);
 
-```bash
-clasp push
+// Store data in cache
+putInCache(cacheKey, data);
+
+// Delete data from cache
+deleteFromCache(cacheKey);
 ```
 
-## Clearing Cache
+### Configuration
 
-To clear all cached data, run the `clearAllCachedData` function from the Apps Script editor.
+```javascript
+// Set cache provider
+setCacheProviderName('firebase'); // or 'proxy'
+
+// Configure proxy URL (if using proxy provider)
+setProxyBaseUrl('https://your-proxy.example.com');
+
+// Enable/disable caching
+setCachingEnabled(true);
+
+// Test providers
+testFirebaseConnection();
+testProxyConnection();
+```
+
+## Setup
+
+1. Create a new Google Apps Script project
+2. Install [clasp](https://github.com/google/clasp) CLI
+3. Clone this repository
+4. Run `clasp push` to upload files to Apps Script
+5. Configure the connector in Looker Studio
+
+### Firebase Setup
+
+If using Firebase caching:
+
+1. Create a Firebase project with Realtime Database
+2. Generate a service account key
+3. Run `storeServiceAccountCredentials(JSON.stringify(serviceAccountJson))` to store credentials
+4. Run `enableCaching()` to enable caching
+5. Test with `testFirebaseConnection()`
+
+### Proxy Setup
+
+If using a proxy API for caching:
+
+1. Set up your custom caching API
+2. Run `configureProxyUrl('https://your-proxy.example.com')`
+3. Run `switchCacheProvider('proxy')`
+4. Test with `testProxyConnection()`
+
+## Development
+
+- Run `test()` to test the connector
+- Use `manuallyRefreshAllCaches()` to refresh the cache
+- Use `getCachingStatus()` to check caching configuration
