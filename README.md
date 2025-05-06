@@ -53,8 +53,8 @@ setProxyBaseUrl('https://your-proxy.example.com');
 setCachingEnabled(true);
 
 // Test providers
-testCacheProvider('firebase');
-testCacheProvider('proxy');
+testFirebaseConnection();
+testProxyConnection();
 ```
 
 ## Setup
