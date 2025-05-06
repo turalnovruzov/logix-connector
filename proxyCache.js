@@ -30,11 +30,10 @@ const proxyCache = {
     try {
       Logger.log(`[Proxy] Getting data for key: ${key}`);
       const baseUrl = getValidProxyBaseUrl();
-      const url = `${baseUrl}/cache/${encodeURIComponent(key)}`;
+      const url = `${baseUrl}/api/cache/${encodeURIComponent(key)}`;
 
       const response = UrlFetchApp.fetch(url, {
         method: "get",
-        contentType: "application/json",
         muteHttpExceptions: true,
       });
 
@@ -50,7 +49,14 @@ const proxyCache = {
         return null;
       }
 
-      return JSON.parse(response.getContentText());
+      // Parse the response - depending on the content type
+      const contentText = response.getContentText();
+      try {
+        return JSON.parse(contentText);
+      } catch (e) {
+        // If not JSON, return as is (plain text)
+        return contentText;
+      }
     } catch (error) {
       Logger.log(`[Proxy] Error getting data: ${error}`);
       return null;
@@ -67,19 +73,19 @@ const proxyCache = {
     try {
       Logger.log(`[Proxy] Storing data for key: ${key}`);
       const baseUrl = getValidProxyBaseUrl();
-      const url = `${baseUrl}/cache/${encodeURIComponent(key)}`;
+      const url = `${baseUrl}/api/cache/${encodeURIComponent(key)}`;
+
+      // Convert data to JSON string if it's an object
+      const payload = typeof data === "object" ? JSON.stringify(data) : data;
 
       const response = UrlFetchApp.fetch(url, {
         method: "put",
         contentType: "application/json",
-        payload: JSON.stringify(data),
+        payload: payload,
         muteHttpExceptions: true,
       });
 
-      if (
-        response.getResponseCode() !== 200 &&
-        response.getResponseCode() !== 201
-      ) {
+      if (response.getResponseCode() !== 200) {
         Logger.log(
           `[Proxy] API error during put: ${response.getResponseCode()} - ${response.getContentText()}`
         );
@@ -102,17 +108,14 @@ const proxyCache = {
     try {
       Logger.log(`[Proxy] Deleting data for key: ${key}`);
       const baseUrl = getValidProxyBaseUrl();
-      const url = `${baseUrl}/cache/${encodeURIComponent(key)}`;
+      const url = `${baseUrl}/api/cache/${encodeURIComponent(key)}`;
 
       const response = UrlFetchApp.fetch(url, {
         method: "delete",
         muteHttpExceptions: true,
       });
 
-      if (
-        response.getResponseCode() !== 200 &&
-        response.getResponseCode() !== 204
-      ) {
+      if (response.getResponseCode() !== 200) {
         Logger.log(
           `[Proxy] API error during delete: ${response.getResponseCode()} - ${response.getContentText()}`
         );
