@@ -172,9 +172,9 @@ function refreshAllCaches() {
     };
   }
 
-  // Get all cached data from Firebase
-  const rootUrl = buildFirebaseUrl("");
-  const cacheData = getFromCache(rootUrl);
+  // Get all cached data from the current provider
+  const rootKey = "";
+  const cacheData = getFromCache(rootKey);
 
   if (!cacheData) {
     Logger.log("No cached data found to refresh");
@@ -226,13 +226,12 @@ function refreshAllCaches() {
       }
 
       // Update cache with fresh data
-      const cacheUrl = buildFirebaseUrl(key);
       const cacheData = {
         data: apiResponse.data,
         timestamp: new Date().getTime(),
       };
 
-      putInCache(cacheUrl, cacheData);
+      putInCache(key, cacheData);
       Logger.log(`Successfully refreshed cache for key: ${key}`);
       refreshedCount++;
 

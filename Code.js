@@ -103,10 +103,9 @@ function getData(request) {
   if (cachingEnabled) {
     // Generate a cache key based on district and requested fields
     const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
-    const cacheUrl = buildFirebaseUrl(cacheKey);
 
     // Try to get data from cache first
-    let cachedData = getFromCache(cacheUrl);
+    let cachedData = getFromCache(cacheKey);
     let cacheNeedsUpdate = true;
 
     if (cachedData) {
@@ -165,7 +164,6 @@ function getData(request) {
   if (cachingEnabled) {
     // Generate a cache key based on district and requested fields
     const cacheKey = generateCacheKey(districtDbNumber, requestedFieldIds);
-    const cacheUrl = buildFirebaseUrl(cacheKey);
 
     const cacheData = {
       data: apiResponse.data,
@@ -173,7 +171,7 @@ function getData(request) {
     };
 
     // Update cache with fresh data
-    putInCache(cacheUrl, cacheData);
+    putInCache(cacheKey, cacheData);
     Logger.log("Stored fresh data in cache with key: " + cacheKey);
     message += " and updated cache";
   }

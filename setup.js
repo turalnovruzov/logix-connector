@@ -4,101 +4,46 @@
  */
 
 /**
- * Function to store Firebase service account credentials in script properties.
- * Run this function once to set up Firebase authentication.
- *
- * @param {string} credentialsJson The JSON string of the service account credentials
- */
-function storeServiceAccountCredentials(credentialsJson) {
-  // Validate that the input is valid JSON
-  try {
-    const parsedJson = JSON.parse(credentialsJson);
-
-    // Check that required fields exist
-    if (
-      !parsedJson.private_key ||
-      !parsedJson.client_email ||
-      !parsedJson.project_id
-    ) {
-      throw new Error("Missing required fields in service account credentials");
-    }
-
-    // Store the credentials in script properties
-    PropertiesService.getScriptProperties().setProperty(
-      SERVICE_ACCOUNT_CREDS,
-      credentialsJson
-    );
-
-    Logger.log("Service account credentials stored successfully");
-    return true;
-  } catch (error) {
-    Logger.log("Error storing service account credentials: " + error);
-    return false;
-  }
-}
-
-/**
  * Function to enable Firebase caching
  * Run this to turn on caching functionality
- * @return {Object} Status message
  */
 function enableCaching() {
   try {
     setCachingEnabled(true);
-    return {
-      success: true,
-      message: "Caching has been enabled",
-      cachingEnabled: true,
-    };
+    Logger.log("Caching has been enabled");
+    Logger.log("Current provider: " + getCacheProviderName());
   } catch (error) {
     Logger.log("Error enabling caching: " + error);
-    return {
-      success: false,
-      error: error.toString(),
-    };
   }
 }
 
 /**
  * Function to disable Firebase caching
  * Run this to turn off caching functionality
- * @return {Object} Status message
  */
 function disableCaching() {
   try {
     setCachingEnabled(false);
-    return {
-      success: true,
-      message: "Caching has been disabled",
-      cachingEnabled: false,
-    };
+    Logger.log("Caching has been disabled");
   } catch (error) {
     Logger.log("Error disabling caching: " + error);
-    return {
-      success: false,
-      error: error.toString(),
-    };
   }
 }
 
 /**
  * Function to check current caching status
- * @return {Object} Caching status
  */
 function getCachingStatus() {
   try {
     const enabled = isCachingEnabled();
-    return {
-      success: true,
-      cachingEnabled: enabled,
-      message: `Caching is currently ${enabled ? "enabled" : "disabled"}`,
-    };
+    const provider = getCacheProviderName();
+
+    Logger.log("=== Caching Status ===");
+    Logger.log("Enabled: " + (enabled ? "Yes" : "No"));
+    Logger.log("Provider: " + provider);
+    Logger.log("Proxy URL: " + (getProxyBaseUrl() || "Not configured"));
   } catch (error) {
     Logger.log("Error checking caching status: " + error);
-    return {
-      success: false,
-      error: error.toString(),
-    };
   }
 }
 
@@ -108,34 +53,208 @@ function getCachingStatus() {
  */
 function testFirebaseConnection() {
   try {
+    // Save current provider to restore later
+    const originalProvider = getCacheProviderName();
+
+    // Force Firebase provider for this test
+    setCacheProviderName(CACHE_PROVIDERS.FIREBASE);
+
     // Test authentication
-    const authToken = getOauthService().getAccessToken();
+    const oauthService = getFirebaseOauthService();
+    const authToken = oauthService.getAccessToken();
     Logger.log("Authentication successful. Token received.");
 
-    // Test write to Firebase
-    const testKey = "test_connection";
-    const testUrl = buildFirebaseUrl(testKey);
+    // Run the provider test
+    const testKey = `test_${new Date().getTime()}`;
     const testData = {
       timestamp: new Date().getTime(),
       message: "Test connection successful",
     };
 
-    // Try to write data
-    putInCache(testUrl, testData);
-    Logger.log("Data write successful");
+    Logger.log("Testing write operation...");
+    const writeResult = firebaseCache.put(testKey, testData);
 
-    // Try to read data back
-    const readData = getFromCache(testUrl);
-    Logger.log("Data read successful: " + JSON.stringify(readData));
+    if (!writeResult) {
+      Logger.log("FAILED: Could not write test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
 
-    // Try to delete the test data
-    deleteFromCache(testUrl);
-    Logger.log("Data delete successful");
+    Logger.log("Testing read operation...");
+    const readData = firebaseCache.get(testKey);
 
-    return "Firebase connection test completed successfully";
+    if (!readData) {
+      Logger.log("FAILED: Could not read test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
+
+    Logger.log("Testing delete operation...");
+    const deleteResult = firebaseCache.delete(testKey);
+
+    if (!deleteResult) {
+      Logger.log("FAILED: Could not delete test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
+
+    Logger.log("SUCCESS: Firebase connection test passed");
+    Logger.log("- Write: Success");
+    Logger.log("- Read: Success");
+    Logger.log("- Delete: Success");
+
+    // Restore original provider
+    setCacheProviderName(originalProvider);
   } catch (error) {
-    Logger.log("Firebase connection test failed: " + error);
-    return "Firebase connection test failed: " + error;
+    Logger.log("FAILED: Firebase connection test failed: " + error);
+  }
+}
+
+/**
+ * Function to test Proxy connection
+ * Run this after setting up the proxy URL to verify it works
+ */
+function testProxyConnection() {
+  try {
+    // Save current provider to restore later
+    const originalProvider = getCacheProviderName();
+
+    // Force Proxy provider for this test
+    setCacheProviderName(CACHE_PROVIDERS.PROXY);
+
+    // Verify proxy URL is configured
+    const proxyUrl = getProxyBaseUrl();
+    if (!proxyUrl) {
+      Logger.log(
+        "ERROR: Proxy URL not configured. Run configureProxyUrl() first"
+      );
+      return;
+    }
+
+    Logger.log(`Testing connection to proxy at ${proxyUrl}`);
+
+    // Run the provider test
+    const testKey = `test_${new Date().getTime()}`;
+    const testData = {
+      timestamp: new Date().getTime(),
+      message: "Test connection successful",
+    };
+
+    Logger.log("Testing write operation...");
+    const writeResult = proxyCache.put(testKey, testData);
+
+    if (!writeResult) {
+      Logger.log("FAILED: Could not write test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
+
+    Logger.log("Testing read operation...");
+    const readData = proxyCache.get(testKey);
+
+    if (!readData) {
+      Logger.log("FAILED: Could not read test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
+
+    Logger.log("Testing delete operation...");
+    const deleteResult = proxyCache.delete(testKey);
+
+    if (!deleteResult) {
+      Logger.log("FAILED: Could not delete test data");
+      setCacheProviderName(originalProvider);
+      return;
+    }
+
+    Logger.log("SUCCESS: Proxy connection test passed");
+    Logger.log("- Write: Success");
+    Logger.log("- Read: Success");
+    Logger.log("- Delete: Success");
+
+    // Restore original provider
+    setCacheProviderName(originalProvider);
+  } catch (error) {
+    Logger.log("FAILED: Proxy connection test failed: " + error);
+  }
+}
+
+/**
+ * Function to switch to Firebase as cache provider
+ */
+function useFirebaseCacheProvider() {
+  try {
+    // Check if Firebase credentials are set
+    try {
+      const creds = getFirebaseServiceAccountCreds();
+      if (!creds) {
+        Logger.log(
+          "ERROR: Firebase credentials not configured. Run storeServiceAccountCredentials() first"
+        );
+        return;
+      }
+    } catch (error) {
+      Logger.log("ERROR: Could not retrieve Firebase credentials: " + error);
+      return;
+    }
+
+    const success = setCacheProviderName(CACHE_PROVIDERS.FIREBASE);
+    Logger.log("Cache provider switched to Firebase");
+  } catch (error) {
+    Logger.log("Error switching cache provider: " + error);
+  }
+}
+
+/**
+ * Function to switch to Proxy as cache provider
+ */
+function useProxyCacheProvider() {
+  try {
+    // Verify proxy URL is configured
+    const proxyUrl = getProxyBaseUrl();
+    if (!proxyUrl) {
+      Logger.log(
+        "ERROR: Proxy URL not configured. Run configureProxyUrl() first"
+      );
+      return;
+    }
+
+    const success = setCacheProviderName(CACHE_PROVIDERS.PROXY);
+    Logger.log("Cache provider switched to Proxy");
+    Logger.log("Using proxy URL: " + proxyUrl);
+  } catch (error) {
+    Logger.log("Error switching cache provider: " + error);
+  }
+}
+
+/**
+ * Function to configure the proxy base URL to example.com
+ * Edit this function to change the URL before running it
+ */
+function configureProxyUrl() {
+  try {
+    // Change this URL to your actual proxy URL
+    const url = "https://example.com";
+
+    if (!url || typeof url !== "string" || !url.startsWith("http")) {
+      Logger.log("ERROR: Invalid proxy URL format");
+      Logger.log("Edit the url value in the configureProxyUrl function");
+      return;
+    }
+
+    // Remove trailing slash if present
+    let finalUrl = url;
+    if (url.endsWith("/")) {
+      finalUrl = url.slice(0, -1);
+    }
+
+    PropertiesService.getScriptProperties().setProperty(
+      PROXY_BASE_URL_KEY,
+      finalUrl
+    );
+    Logger.log(`Proxy URL configured to: ${finalUrl}`);
+  } catch (error) {
+    Logger.log("Error configuring proxy URL: " + error);
   }
 }
 
@@ -146,14 +265,14 @@ function testFirebaseConnection() {
 function clearAllCachedData() {
   try {
     // Get the root URL to fetch all cache entries
-    const rootUrl = buildFirebaseUrl("");
+    const rootKey = "";
 
     // First, get all the data to identify keys
-    const cacheData = getFromCache(rootUrl);
+    const cacheData = getFromCache(rootKey);
 
     if (!cacheData) {
       Logger.log("No cached data found to clear");
-      return true;
+      return;
     }
 
     let deletedCount = 0;
@@ -162,8 +281,7 @@ function clearAllCachedData() {
     // Delete each key individually
     for (const key in cacheData) {
       try {
-        const keyUrl = buildFirebaseUrl(key);
-        deleteFromCache(keyUrl);
+        deleteFromCache(key);
         deletedCount++;
       } catch (err) {
         Logger.log(`Failed to delete key ${key}: ${err}`);
@@ -171,13 +289,11 @@ function clearAllCachedData() {
       }
     }
 
-    Logger.log(
-      `Cache clearing completed. Deleted: ${deletedCount}, Failed: ${failedCount}`
-    );
-    return true;
+    Logger.log(`Cache clearing completed.`);
+    Logger.log(`- Deleted: ${deletedCount} items`);
+    Logger.log(`- Failed: ${failedCount} items`);
   } catch (error) {
     Logger.log("Error clearing cached data: " + error);
-    return false;
   }
 }
 
@@ -188,13 +304,77 @@ function clearAllCachedData() {
 function manuallyRefreshAllCaches() {
   try {
     const results = refreshAllCaches();
-    Logger.log(`Manual cache refresh completed: ${JSON.stringify(results)}`);
-    return results;
+    Logger.log("Manual cache refresh completed");
+    Logger.log(`- Refreshed: ${results.refreshed} items`);
+    Logger.log(`- Failed: ${results.failed} items`);
+    Logger.log(`- Execution time: ${results.executionTime} seconds`);
   } catch (error) {
     Logger.log("Error during manual cache refresh: " + error);
-    return {
-      success: false,
-      error: error.toString(),
-    };
+  }
+}
+
+/**
+ * Tests the current cache provider without requiring parameters
+ * This function is intended for UI execution
+ */
+function testCurrentCacheProvider() {
+  const provider = getCacheProviderName();
+  Logger.log(`Testing current cache provider: ${provider}`);
+
+  // Save current caching state to restore later
+  const originalCachingState = isCachingEnabled();
+  if (!originalCachingState) {
+    setCachingEnabled(true);
+  }
+
+  const testKey = `test_${new Date().getTime()}`;
+  const testData = {
+    timestamp: new Date().getTime(),
+    message: `Test data for ${provider} provider`,
+    provider: provider,
+  };
+
+  try {
+    // Test write
+    Logger.log(`Writing test data with key: ${testKey}`);
+    const writeResult = getCacheProvider().put(testKey, testData);
+
+    if (!writeResult) {
+      Logger.log("FAILED: Could not write test data");
+      return;
+    }
+
+    // Test read
+    Logger.log(`Reading test data with key: ${testKey}`);
+    const readData = getCacheProvider().get(testKey);
+
+    if (!readData) {
+      Logger.log("FAILED: Could not read test data");
+      return;
+    }
+
+    // Test delete
+    Logger.log(`Deleting test data with key: ${testKey}`);
+    const deleteResult = getCacheProvider().delete(testKey);
+
+    if (!deleteResult) {
+      Logger.log("FAILED: Could not delete test data");
+      return;
+    }
+
+    // Verify data was actually deleted
+    const verifyDelete = getCacheProvider().get(testKey);
+
+    Logger.log("SUCCESS: Cache provider test passed");
+    Logger.log("- Write: Success");
+    Logger.log("- Read: Success");
+    Logger.log("- Delete: Success");
+  } catch (error) {
+    Logger.log("FAILED: Cache provider test failed: " + error);
+  } finally {
+    // Restore original caching state if it was changed
+    if (!originalCachingState) {
+      setCachingEnabled(originalCachingState);
+    }
   }
 }
